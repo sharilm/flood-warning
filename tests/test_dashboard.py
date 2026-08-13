@@ -6,7 +6,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from data_loader import fetch_flood_warning_data, get_status_color
+from data_loader import fetch_flood_warning_data, get_status_color, sanitize_security_input
 from components.kpi_cards import create_kpi_cards
 from components.map_chart import create_map_chart
 from components.analytics_charts import (
@@ -15,6 +15,7 @@ from components.analytics_charts import (
     create_rainfall_state_chart
 )
 from components.data_table import create_data_table
+from app import app
 
 def test_get_status_color():
     assert get_status_color('DANGER') == '#ef4444'
@@ -22,6 +23,24 @@ def test_get_status_color():
     assert get_status_color('ALERT') == '#eab308'
     assert get_status_color('NORMAL') == '#10b981'
     assert get_status_color('ERROR') == '#64748b'
+
+def test_sanitize_security_input():
+    dirty_input = "<script>alert('xss')</script>Kuala Lumpur<iframe src='bad.html'></iframe>"
+    clean = sanitize_security_input(dirty_input)
+    assert "<script>" not in clean
+    assert "<iframe>" not in clean
+    assert "Kuala Lumpur" in clean
+
+def test_security_headers_middleware():
+    with app.server.test_client() as client:
+        res = client.get('/')
+        assert res.headers.get('Content-Security-Policy') is not None
+        assert res.headers.get('X-Frame-Options') == 'DENY'
+        assert res.headers.get('X-Content-Type-Options') == 'nosniff'
+        assert res.headers.get('X-XSS-Protection') == '1; mode=block'
+        assert 'max-age=31536000' in res.headers.get('Strict-Transport-Security')
+        assert res.headers.get('Referrer-Policy') == 'strict-origin-when-cross-origin'
+        assert 'geolocation=()' in res.headers.get('Permissions-Policy')
 
 def test_fetch_flood_warning_data(requests_mock):
     mock_data = [{

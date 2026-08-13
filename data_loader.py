@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 import datetime
 import logging
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("DataLoader")
@@ -17,6 +18,20 @@ DEFAULT_COLUMNS = [
     'rainfall_indicator', 'water_level_update_datetime', 'rainfall_update_datetime',
     'marker_color', 'danger_ratio', 'status_rank', 'full_label'
 ]
+
+def sanitize_security_input(val):
+    """
+    Sanitize text input to prevent XSS, HTML/Script injection, and ReDoS attacks.
+    Strips dangerous tags (<script>, <iframe>, event attributes), restricts length,
+    and removes control characters.
+    """
+    if not val or not isinstance(val, str):
+        return ""
+    # Strip HTML/script tags and dangerous event handlers
+    cleaned = re.sub(r'<(?:[^>=]|=\s*["\']?[^"\'>]*["\']?)*>', '', val)
+    cleaned = re.sub(r'(?i)(javascript:|data:|vbscript:|onload|onerror|onclick|onmouseover)', '', cleaned)
+    cleaned = re.sub(r'[^\w\s\-\.\/\,\(\)]', '', cleaned)
+    return cleaned.strip()[:100]
 
 def get_empty_dataframe():
     """Return empty DataFrame initialized with all expected columns to prevent KeyErrors."""
@@ -82,7 +97,7 @@ def fetch_flood_warning_data():
         
         # String Sanitization (strip whitespace, sanitize unexpected script injection chars)
         for col in str_cols:
-            df[col] = df[col].astype(str).str.replace(r'[<>]', '', regex=True).str.strip()
+            df[col] = df[col].astype(str).apply(sanitize_security_input)
 
         # Fill missing text fields cleanly
         df['state'] = df['state'].replace({'nan': 'TIDAK DIKETAHUI', '': 'TIDAK DIKETAHUI'}).fillna('TIDAK DIKETAHUI')

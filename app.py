@@ -5,7 +5,7 @@ import pandas as pd
 import logging
 import re
 
-from data_loader import fetch_flood_warning_data
+from data_loader import fetch_flood_warning_data, sanitize_security_input
 from components.navbar import create_navbar
 from components.kpi_cards import create_kpi_cards
 from components.map_chart import create_map_chart
@@ -29,6 +29,37 @@ app = dash.Dash(
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}]
 )
 server = app.server
+
+# ==============================================================================
+# SECURITY SOP MIDDLEWARE - OWASP STANDARD HTTP SECURITY HEADERS
+# ==============================================================================
+@server.after_request
+def apply_security_sop_headers(response):
+    """
+    Enforce OWASP standard security headers on every HTTP response to defend
+    against XSS, Clickjacking, MIME-sniffing, SSL stripping & MITM attacks.
+    """
+    csp_policy = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+        "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:; "
+        "img-src 'self' data: https://*.cartocdn.com https://*.tile.openstreetmap.org https://api.mapbox.com; "
+        "connect-src 'self' https://api.data.gov.my https://*.cartocdn.com; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self';"
+    )
+    response.headers['Content-Security-Policy'] = csp_policy
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=(), payment=(), usb=()'
+    response.headers['Server'] = 'MY-NDCC-Secure-Gateway/2.0'
+    response.headers['X-Powered-By'] = 'NADMA-Security-Layer'
+    return response
 
 # Global initial data fetch
 initial_df, initial_ts, _ = fetch_flood_warning_data()
