@@ -1,0 +1,72 @@
+name: MY Flood Warning CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # 🧪 JOB 1: Continuous Integration (Linting & Testing)
+  build-and-test:
+    name: 🧪 Build, Syntax Check & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+          pip install -r requirements.txt
+
+      - name: 🔍 Lint Code Syntax with Flake8
+        run: |
+          # Stop build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Exit-zero treats all errors as warnings.
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: 🧪 Run Pytest Test Suite
+        run: |
+          pytest tests/ -v
+
+  # 🚀 JOB 2: Continuous Deployment (Trigger Cloud Deploy)
+  deploy-cloud:
+    name: 🚀 Deploy to Cloud (Render / Koyeb)
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📣 Trigger Render.com Auto-Deploy Webhook
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$RENDER_HOOK" ]; then
+            echo "🚀 Triggering Render deployment hook..."
+            curl -X POST "$RENDER_HOOK"
+            echo "✅ Render deployment hook triggered successfully!"
+          else
+            echo "ℹ️ RENDER_DEPLOY_HOOK_URL secret not configured. Skipping Render webhook trigger."
+          fi
+
+      - name: 📣 Trigger Koyeb / Webhook Deploy (Optional)
+        env:
+          KOYEB_HOOK: ${{ secrets.KOYEB_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$KOYEB_HOOK" ]; then
+            echo "🚀 Triggering Koyeb deployment hook..."
+            curl -X POST "$KOYEB_HOOK"
+            echo "✅ Koyeb deployment hook triggered successfully!"
+          else
+            echo "ℹ️ KOYEB_DEPLOY_HOOK_URL secret not configured. Skipping Koyeb webhook trigger."
+          fi
