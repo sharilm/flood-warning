@@ -6,18 +6,21 @@ def create_top_danger_chart(df):
     """Bar chart showing stations with highest water level relative to danger threshold."""
     if df.empty:
         fig = go.Figure()
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig.add_annotation(
+            text="TIADA REKOD STESEN UNTUK DIPAPARKAN",
+            showarrow=False,
+            font=dict(color="#64748b", size=12, family="Plus Jakarta Sans")
+        )
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=270)
         return fig
 
-    # Filter stations with valid current & danger levels
     valid_df = df[df['water_level_current'].notnull() & df['water_level_danger_level'].notnull()].copy()
     if valid_df.empty:
         valid_df = df[df['water_level_current'].notnull()].copy()
         valid_df['water_level_danger_level'] = 0
 
-    # Sort by danger ratio or water level
     valid_df = valid_df.sort_values(by=['danger_ratio', 'water_level_current'], ascending=False).head(10)
-    valid_df['short_name'] = valid_df['station_name'].str.slice(0, 20) + " (" + valid_df['state'].str.slice(0, 10) + ")"
+    valid_df['short_name'] = valid_df['station_name'].str.slice(0, 22) + " (" + valid_df['state'].str.slice(0, 8) + ")"
 
     fig = go.Figure()
 
@@ -30,9 +33,9 @@ def create_top_danger_chart(df):
             orientation='h',
             marker=dict(
                 color=valid_df['marker_color'],
-                line=dict(color='#334155', width=1)
+                line=dict(color='#1e2d4a', width=1)
             ),
-            hovertemplate="<b>%{y}</b><br>Paras Semasa: %{x:.2f} m<extra></extra>"
+            hovertemplate="<b>%{y}</b><br>Paras Semasa: <b>%{x:.2f} m</b><extra></extra>"
         )
     )
 
@@ -50,20 +53,21 @@ def create_top_danger_chart(df):
 
     fig.update_layout(
         title=dict(
-            text="Top 10 Stesen Dekat / Melepasi Aras Bahaya",
-            font=dict(color="#f8fafc", size=14, family="Plus Jakarta Sans")
+            text="TOP 10 STESEN MENGESAN PARAS KRITIKAL",
+            font=dict(color="#f8fafc", size=13, family="Plus Jakarta Sans")
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=10, r=20, t=40, b=20),
+        margin=dict(l=10, r=20, t=35, b=20),
         xaxis=dict(
-            title=dict(text="Paras Air (Metres)", font=dict(color="#94a3b8", size=11)),
-            tickfont=dict(color="#cbd5e1"),
-            gridcolor="#334155"
+            title=dict(text="Paras Air (Metres)", font=dict(color="#94a3b8", size=11, family="Plus Jakarta Sans")),
+            tickfont=dict(color="#cbd5e1", family="Roboto Mono", size=11),
+            gridcolor="#1e2d4a",
+            zerolinecolor="#334155"
         ),
         yaxis=dict(
             autorange="reversed",
-            tickfont=dict(color="#cbd5e1", size=11),
+            tickfont=dict(color="#cbd5e1", family="Plus Jakarta Sans", size=11),
             showgrid=False
         ),
         legend=dict(
@@ -72,9 +76,9 @@ def create_top_danger_chart(df):
             y=1.02,
             xanchor="right",
             x=1,
-            font=dict(color="#94a3b8", size=10)
+            font=dict(color="#94a3b8", size=10, family="Plus Jakarta Sans")
         ),
-        height=320
+        height=270
     )
     return fig
 
@@ -82,17 +86,23 @@ def create_top_danger_chart(df):
 def create_station_threshold_chart(df, station_id=None):
     """Bullet / Gauge Chart for a single selected station showing levels vs thresholds."""
     if df.empty:
-        return go.Figure()
+        fig = go.Figure()
+        fig.add_annotation(
+            text="SILA PILIH STESEN DARI PETA UNTUK ANALISIS",
+            showarrow=False,
+            font=dict(color="#64748b", size=12, family="Plus Jakarta Sans")
+        )
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=250)
+        return fig
 
     if station_id:
         st_row = df[df['station_id'].astype(str) == str(station_id)]
     else:
-        # Default to highest danger station or first station
         danger_st = df[df['water_level_indicator'] == 'DANGER']
         st_row = danger_st.iloc[[0]] if not danger_st.empty else df.iloc[[0]]
 
     if st_row.empty:
-        return go.Figure()
+        st_row = df.iloc[[0]]
 
     row = st_row.iloc[0]
     st_name = row['station_name']
@@ -109,16 +119,19 @@ def create_station_threshold_chart(df, station_id=None):
 
     fig = go.Figure(
         go.Indicator(
-            mode="gauge+number+delta",
+            mode="gauge+number",
             value=curr,
-            number={'suffix': " m", 'font': {'color': "#f8fafc", 'size': 28}},
-            title={'text': f"<b>{st_name}</b><br><span style='font-size:0.8em;color:#94a3b8;'>{district}, {state} | Status: {indicator}</span>", 'font': {'color': "#f8fafc", 'size': 13}},
+            number={'suffix': " m", 'font': {'color': "#f8fafc", 'size': 26, 'family': 'Roboto Mono'}},
+            title={
+                'text': f"<b>{st_name}</b><br><span style='font-size:0.75em;color:#94a3b8;font-family:Plus Jakarta Sans;'>{district}, {state} | Status: <b>{indicator}</b></span>",
+                'font': {'color': "#f8fafc", 'size': 12, 'family': 'Plus Jakarta Sans'}
+            },
             gauge={
-                'axis': {'range': [0, max_range], 'tickwidth': 1, 'tickcolor': "#94a3b8", 'tickfont': {'color': "#94a3b8"}},
-                'bar': {'color': row['marker_color'], 'thickness': 0.4},
-                'bgcolor': "#1e293b",
+                'axis': {'range': [0, max_range], 'tickwidth': 1, 'tickcolor': "#94a3b8", 'tickfont': {'color': "#94a3b8", 'family': 'Roboto Mono'}},
+                'bar': {'color': row['marker_color'], 'thickness': 0.45},
+                'bgcolor': "#080e1c",
                 'borderwidth': 1,
-                'bordercolor': "#334155",
+                'bordercolor': "#1e2d4a",
                 'steps': [
                     {'range': [0, normal], 'color': '#064e3b'},
                     {'range': [normal, alert], 'color': '#713f12'},
@@ -137,8 +150,8 @@ def create_station_threshold_chart(df, station_id=None):
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=30, r=30, t=60, b=10),
-        height=320
+        margin=dict(l=30, r=30, t=55, b=10),
+        height=250
     )
     return fig
 
@@ -146,14 +159,24 @@ def create_station_threshold_chart(df, station_id=None):
 def create_rainfall_state_chart(df):
     """Bar chart summarizing total today's rainfall by state."""
     if df.empty or 'rainfall_total_today' not in df.columns:
-        return go.Figure()
+        fig = go.Figure()
+        fig.add_annotation(
+            text="TIADA DATA REKOD HUJAN AKTIF HARI INI",
+            showarrow=False,
+            font=dict(color="#64748b", size=12, family="Plus Jakarta Sans")
+        )
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=270)
+        return fig
 
     rf_df = df[df['rainfall_total_today'].notnull() & (df['rainfall_total_today'] > 0)].copy()
     if rf_df.empty:
-        # Dummy empty state chart
         fig = go.Figure()
-        fig.add_annotation(text="Tiada rekod hujan aktif hari ini", showarrow=False, font=dict(color="#94a3b8", size=14))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=320)
+        fig.add_annotation(
+            text="TIADA BACAAN HUJAN DIREKODKAN HARI INI",
+            showarrow=False,
+            font=dict(color="#64748b", size=12, family="Plus Jakarta Sans")
+        )
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=270)
         return fig
 
     state_rf = rf_df.groupby('state')['rainfall_total_today'].agg(['max', 'mean', 'count']).reset_index()
@@ -164,30 +187,30 @@ def create_rainfall_state_chart(df):
         go.Bar(
             y=state_rf['state'],
             x=state_rf['max'],
-            name='Maks Hujan Hari Ini (mm)',
+            name='Maks Hujan (mm)',
             orientation='h',
-            marker=dict(color='#3b82f6', line=dict(color='#1d4ed8', width=1)),
-            hovertemplate="<b>%{y}</b><br>Hujan Maksimum: %{x:.1f} mm<extra></extra>"
+            marker=dict(color='#0284c7', line=dict(color='#0369a1', width=1)),
+            hovertemplate="<b>%{y}</b><br>Bacaan Maksimum: <b>%{x:.1f} mm</b><extra></extra>"
         )
     )
 
     fig.update_layout(
         title=dict(
-            text="Top 10 Negeri Rekod Hujan Paling Tinggi (mm)",
-            font=dict(color="#f8fafc", size=14, family="Plus Jakarta Sans")
+            text="INTENSITI HUJAN TERINGGI MENGIKUT NEGERI (HARI INI)",
+            font=dict(color="#f8fafc", size=13, family="Plus Jakarta Sans")
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=10, r=20, t=40, b=20),
+        margin=dict(l=10, r=20, t=35, b=20),
         xaxis=dict(
-            title=dict(text="Jumlah Hujan (mm)", font=dict(color="#94a3b8", size=11)),
-            tickfont=dict(color="#cbd5e1"),
-            gridcolor="#334155"
+            title=dict(text="Jumlah Hujan (mm)", font=dict(color="#94a3b8", size=11, family="Plus Jakarta Sans")),
+            tickfont=dict(color="#cbd5e1", family="Roboto Mono", size=11),
+            gridcolor="#1e2d4a"
         ),
         yaxis=dict(
-            tickfont=dict(color="#cbd5e1", size=11),
+            tickfont=dict(color="#cbd5e1", family="Plus Jakarta Sans", size=11),
             showgrid=False
         ),
-        height=320
+        height=270
     )
     return fig

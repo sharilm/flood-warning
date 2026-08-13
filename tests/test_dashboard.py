@@ -23,7 +23,21 @@ def test_get_status_color():
     assert get_status_color('NORMAL') == '#10b981'
     assert get_status_color('ERROR') == '#64748b'
 
-def test_fetch_flood_warning_data():
+def test_fetch_flood_warning_data(requests_mock):
+    mock_data = [{
+        'station_id': '101',
+        'station_name': 'Test Station',
+        'station_code': 'TST01',
+        'district': 'Kuala Lumpur',
+        'state': 'WILAYAH PERSEKUTUAN KUALA LUMPUR',
+        'latitude': '3.1390',
+        'longitude': '101.6869',
+        'water_level_current': '2.5',
+        'water_level_danger_level': '3.0',
+        'water_level_indicator': 'WARNING'
+    }]
+    requests_mock.get('https://api.data.gov.my/flood-warning/', json=mock_data)
+
     df, timestamp, success = fetch_flood_warning_data()
     assert success is True
     assert isinstance(df, pd.DataFrame)

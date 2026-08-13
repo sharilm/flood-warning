@@ -26,13 +26,12 @@ def create_map_chart(df, selected_station_id=None):
     if len(map_df) > 0 and len(map_df) < len(df):
         center_lat = map_df['latitude'].mean()
         center_lon = map_df['longitude'].mean()
-        zoom_level = 7
+        zoom_level = 7.0
     else:
         center_lat = 4.2105
         center_lon = 108.9758 if len(map_df[map_df['state'].str.contains('SABAH|SARAWAK', na=False)]) > 0 else 101.9758
-        zoom_level = 5.2
+        zoom_level = 5.3
 
-    # Map hover text preparation
     hover_text = []
     marker_sizes = []
     marker_opacities = []
@@ -40,24 +39,34 @@ def create_map_chart(df, selected_station_id=None):
     for idx, row in map_df.iterrows():
         wl_str = f"{row['water_level_current']:.2f} m" if pd.notnull(row['water_level_current']) else "N/A"
         wl_danger = f"{row['water_level_danger_level']:.2f} m" if pd.notnull(row['water_level_danger_level']) else "N/A"
-        rf_1h = f"{row['rainfall_latest_1hr']:.1f} mm" if pd.notnull(row['rainfall_latest_1hr']) else "N/A"
-        rf_today = f"{row['rainfall_total_today']:.1f} mm" if pd.notnull(row['rainfall_total_today']) else "N/A"
+        rf_1h = f"{row['rainfall_latest_1hr']:.1f} mm" if pd.notnull(row['rainfall_latest_1hr']) else "0.0 mm"
+        rf_today = f"{row['rainfall_total_today']:.1f} mm" if pd.notnull(row['rainfall_total_today']) else "0.0 mm"
         
         status_badge = row['water_level_indicator'] if row['water_level_indicator'] != 'N/A' else row['rainfall_indicator']
+        update_time = row['water_level_update_datetime'] or row['rainfall_update_datetime'] or 'N/A'
 
         txt = (
-            f"<b>{row['station_name']}</b> ({row['station_code']})<br>"
-            f"📍 {row['district']}, {row['state']}<br>"
-            f"🌊 <b>Status Paras Air:</b> {status_badge}<br>"
-            f"💧 <b>Paras Semasa:</b> {wl_str} (Bahaya: {wl_danger})<br>"
-            f"🌧️ <b>Hujan (1 Jam / Hari Ini):</b> {rf_1h} / {rf_today}<br>"
-            f"🕒 <b>Kemaskini:</b> {row['water_level_update_datetime'] or row['rainfall_update_datetime'] or 'N/A'}"
+            f"<div style='font-family: Plus Jakarta Sans, sans-serif; min-width: 230px; line-height: 1.4;'>"
+            f"<div style='font-weight: 800; font-size: 0.95rem; color: #f8fafc; margin-bottom: 2px;'>"
+            f"{row['station_name']}</div>"
+            f"<div style='font-size: 0.75rem; color: #94a3b8; margin-bottom: 8px;'>"
+            f"KOD: <span style='font-family: Roboto Mono, monospace; color: #38bdf8;'>{row['station_code']}</span> | {row['district']}, {row['state']}</div>"
+            f"<div style='background: #080e1c; border: 1px solid #1e2d4a; padding: 6px 10px; border-radius: 6px; font-size: 0.78rem;'>"
+            f"<table style='width: 100%; border-collapse: collapse;'>"
+            f"<tr><td style='color: #94a3b8;'>Status Telemetri:</td><td style='text-align: right; font-weight: 700; font-family: Roboto Mono; color: #f8fafc;'>{status_badge}</td></tr>"
+            f"<tr><td style='color: #94a3b8;'>Paras Semasa:</td><td style='text-align: right; font-weight: 700; font-family: Roboto Mono; color: #38bdf8;'>{wl_str}</td></tr>"
+            f"<tr><td style='color: #94a3b8;'>Aras Bahaya:</td><td style='text-align: right; font-weight: 700; font-family: Roboto Mono; color: #ef4444;'>{wl_danger}</td></tr>"
+            f"<tr><td style='color: #94a3b8;'>Hujan (1j / Hari):</td><td style='text-align: right; font-family: Roboto Mono; color: #60a5fa;'>{rf_1h} / {rf_today}</td></tr>"
+            f"</table>"
+            f"</div>"
+            f"<div style='font-size: 0.7rem; color: #64748b; margin-top: 6px; text-align: right; font-family: Roboto Mono;'>"
+            f"Masa: {update_time}</div>"
+            f"</div>"
         )
         hover_text.append(txt)
 
-        # Highlight danger/warning/selected markers with larger size
         if selected_station_id and str(row['station_id']) == str(selected_station_id):
-            marker_sizes.append(22)
+            marker_sizes.append(24)
             marker_opacities.append(1.0)
         elif row['water_level_indicator'] == 'DANGER':
             marker_sizes.append(16)
@@ -75,7 +84,6 @@ def create_map_chart(df, selected_station_id=None):
 
     fig = go.Figure()
 
-    # Add traces grouped by water_level_indicator for a clean map legend
     indicator_order = ['DANGER', 'WARNING', 'ALERT', 'NORMAL', 'ERROR', 'N/A']
     color_map = {
         'DANGER': '#ef4444',
@@ -99,7 +107,7 @@ def create_map_chart(df, selected_station_id=None):
                 marker=dict(
                     size=sub_df['marker_size'],
                     color=color_map.get(ind, '#64748b'),
-                    opacity=0.85
+                    opacity=0.9
                 ),
                 text=sub_df['hover_text'],
                 hoverinfo='text',
@@ -123,16 +131,16 @@ def create_map_chart(df, selected_station_id=None):
             y=0.02,
             xanchor="left",
             x=0.02,
-            font=dict(color="#f8fafc", size=11),
-            bgcolor="rgba(30, 41, 59, 0.85)",
-            bordercolor="#334155",
+            font=dict(color="#f8fafc", size=11, family="Plus Jakarta Sans"),
+            bgcolor="rgba(15, 23, 42, 0.9)",
+            bordercolor="#1e2d4a",
             borderwidth=1
         ),
         hoverlabel=dict(
-            bgcolor="#1e293b",
+            bgcolor="#0f172a",
             font_size=12,
             font_family="Plus Jakarta Sans",
-            bordercolor="#334155"
+            bordercolor="#1e2d4a"
         )
     )
 

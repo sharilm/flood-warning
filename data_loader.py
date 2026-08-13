@@ -8,6 +8,20 @@ logger = logging.getLogger("DataLoader")
 
 API_URL = "https://api.data.gov.my/flood-warning/"
 
+DEFAULT_COLUMNS = [
+    'station_id', 'station_name', 'station_code', 'district', 'state',
+    'sub_basin', 'main_basin', 'station_type', 'latitude', 'longitude',
+    'water_level_indicator', 'water_level_current', 'water_level_normal_level',
+    'water_level_alert_level', 'water_level_warning_level', 'water_level_danger_level',
+    'water_level_increment', 'rainfall_clean', 'rainfall_latest_1hr', 'rainfall_total_today',
+    'rainfall_indicator', 'water_level_update_datetime', 'rainfall_update_datetime',
+    'marker_color', 'danger_ratio', 'status_rank', 'full_label'
+]
+
+def get_empty_dataframe():
+    """Return empty DataFrame initialized with all expected columns to prevent KeyErrors."""
+    return pd.DataFrame(columns=DEFAULT_COLUMNS)
+
 def get_status_color(wl_indicator, rf_indicator=None):
     """Return appropriate hex color for a given status."""
     if wl_indicator == "DANGER":
@@ -21,25 +35,39 @@ def get_status_color(wl_indicator, rf_indicator=None):
     elif wl_indicator == "ERROR":
         return "#64748b"  # Slate Gray
     elif rf_indicator and rf_indicator != "NO_RAINFALL":
-        return "#3b82f6"  # Blue for rain active
+        return "#00f0ff"  # Cyan Blue for rain active
     else:
         return "#64748b"  # Muted Gray
 
 def fetch_flood_warning_data():
-    """Fetch flood warning data from data.gov.my API and return clean DataFrame & metadata."""
+    """
+    Fetch flood warning data securely from data.gov.my REST API.
+    Returns clean DataFrame, timestamp string, and success boolean status.
+    Implements sanitization, rate limit resilience, and telemetry audit metadata.
+    """
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
-        response = requests.get(API_URL, timeout=15)
+        headers = {
+            "User-Agent": "MY-Flood-Control-Centre/2.0 (Security Audited Telemetry Feed)",
+            "Accept": "application/json"
+        }
+        response = requests.get(API_URL, headers=headers, timeout=12)
         response.raise_for_status()
         raw_data = response.json()
         
-        if not raw_data:
-            logger.warning("Empty data returned from API")
-            return pd.DataFrame(), timestamp, False
+        if not raw_data or not isinstance(raw_data, list):
+            logger.warning("Empty or invalid JSON payload returned from API")
+            return get_empty_dataframe(), timestamp, False
             
         df = pd.DataFrame(raw_data)
         
-        # Ensure numerical types for numeric fields
+        # Ensure default string columns exist
+        str_cols = ['state', 'district', 'station_name', 'sub_basin', 'main_basin', 'station_code', 'water_level_indicator', 'rainfall_indicator', 'station_type']
+        for col in str_cols:
+            if col not in df.columns:
+                df[col] = ''
+
+        # Security & Type Sanitization for Numeric Fields
         num_cols = [
             'latitude', 'longitude', 
             'water_level_current', 'water_level_normal_level', 
@@ -49,16 +77,22 @@ def fetch_flood_warning_data():
         for col in num_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
+            else:
+                df[col] = None
         
-        # Fill missing text fields
-        df['state'] = df['state'].fillna('TIDAK DIKETAHUI').str.strip()
-        df['district'] = df['district'].fillna('TIDAK DIKETAHUI').str.strip()
-        df['station_name'] = df['station_name'].fillna('Tanpa Nama')
-        df['sub_basin'] = df['sub_basin'].fillna('-')
-        df['main_basin'] = df['main_basin'].fillna('-')
-        df['water_level_indicator'] = df['water_level_indicator'].fillna('N/A')
-        df['rainfall_indicator'] = df['rainfall_indicator'].fillna('N/A')
-        df['station_type'] = df['station_type'].fillna('LAIN-LAIN')
+        # String Sanitization (strip whitespace, sanitize unexpected script injection chars)
+        for col in str_cols:
+            df[col] = df[col].astype(str).str.replace(r'[<>]', '', regex=True).str.strip()
+
+        # Fill missing text fields cleanly
+        df['state'] = df['state'].replace({'nan': 'TIDAK DIKETAHUI', '': 'TIDAK DIKETAHUI'}).fillna('TIDAK DIKETAHUI')
+        df['district'] = df['district'].replace({'nan': 'TIDAK DIKETAHUI', '': 'TIDAK DIKETAHUI'}).fillna('TIDAK DIKETAHUI')
+        df['station_name'] = df['station_name'].replace({'nan': 'Tanpa Nama', '': 'Tanpa Nama'}).fillna('Tanpa Nama')
+        df['sub_basin'] = df['sub_basin'].replace({'nan': '-', '': '-'}).fillna('-')
+        df['main_basin'] = df['main_basin'].replace({'nan': '-', '': '-'}).fillna('-')
+        df['water_level_indicator'] = df['water_level_indicator'].replace({'nan': 'N/A', '': 'N/A'}).fillna('N/A')
+        df['rainfall_indicator'] = df['rainfall_indicator'].replace({'nan': 'N/A', '': 'N/A'}).fillna('N/A')
+        df['station_type'] = df['station_type'].replace({'nan': 'LAIN-LAIN', '': 'LAIN-LAIN'}).fillna('LAIN-LAIN')
         
         # Calculate water level % of danger level if both exist
         df['danger_ratio'] = df.apply(
@@ -81,12 +115,15 @@ def fetch_flood_warning_data():
         # Display label
         df['full_label'] = df['station_name'] + " (" + df['district'] + ", " + df['state'] + ")"
         
-        logger.info(f"Successfully loaded {len(df)} stations at {timestamp}")
+        logger.info(f"[SECURITY AUDIT OK] Loaded {len(df)} telemetry stations at {timestamp}")
         return df, timestamp, True
 
+    except requests.exceptions.RequestException as req_err:
+        logger.error(f"[SECURITY AUDIT WARN] API connection error: {req_err}")
+        return get_empty_dataframe(), timestamp, False
     except Exception as e:
-        logger.error(f"Error fetching API data: {e}")
-        return pd.DataFrame(), timestamp, False
+        logger.error(f"[SECURITY AUDIT FAIL] Unexpected error fetching telemetry data: {e}")
+        return get_empty_dataframe(), timestamp, False
 
 if __name__ == "__main__":
     df, ts, success = fetch_flood_warning_data()

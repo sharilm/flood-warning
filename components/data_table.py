@@ -5,7 +5,6 @@ def create_data_table(df):
     if df.empty:
         display_df_records = []
     else:
-        # Prepare display columns
         display_df = df[[
             'station_id', 'station_name', 'station_code', 'district', 'state',
             'water_level_indicator', 'water_level_current', 
@@ -17,8 +16,8 @@ def create_data_table(df):
 
     columns = [
         {"name": "Status", "id": "water_level_indicator"},
-        {"name": "Nama Stesen", "id": "station_name"},
-        {"name": "Kod", "id": "station_code"},
+        {"name": "Nama Stesen Telemetri", "id": "station_name"},
+        {"name": "Kod Stesen", "id": "station_code"},
         {"name": "Daerah", "id": "district"},
         {"name": "Negeri", "id": "state"},
         {"name": "Paras Semasa (m)", "id": "water_level_current", "type": "numeric", "format": {"specifier": ".2f"}},
@@ -54,6 +53,27 @@ def create_data_table(df):
             'if': {'filter_query': '{water_level_indicator} = "NORMAL"'},
             'backgroundColor': 'rgba(16, 185, 129, 0.1)',
             'color': '#6ee7b7'
+        },
+        {
+            'if': {'column_id': 'station_code'},
+            'fontFamily': 'Roboto Mono, monospace',
+            'color': '#38bdf8'
+        },
+        {
+            'if': {'column_id': 'water_level_current'},
+            'fontFamily': 'Roboto Mono, monospace',
+            'fontWeight': 'bold'
+        },
+        {
+            'if': {'column_id': 'water_level_danger_level'},
+            'fontFamily': 'Roboto Mono, monospace',
+            'color': '#fca5a5'
+        },
+        {
+            'if': {'column_id': 'water_level_update_datetime'},
+            'fontFamily': 'Roboto Mono, monospace',
+            'color': '#94a3b8',
+            'fontSize': '0.78rem'
         }
     ]
 
@@ -69,23 +89,25 @@ def create_data_table(df):
         export_headers='display',
         style_table={'overflowX': 'auto', 'minWidth': '100%'},
         style_header={
-            'backgroundColor': '#0f172a',
+            'backgroundColor': '#060a14',
             'color': '#94a3b8',
-            'fontWeight': 'bold',
-            'fontSize': '0.78rem',
+            'fontFamily': 'Plus Jakarta Sans, sans-serif',
+            'fontWeight': '700',
+            'fontSize': '0.75rem',
             'textTransform': 'uppercase',
-            'borderBottom': '2px solid #334155',
-            'padding': '10px'
+            'letterSpacing': '0.04em',
+            'borderBottom': '2px solid #1e2d4a',
+            'padding': '10px 12px'
         },
         style_cell={
-            'backgroundColor': '#1e293b',
+            'backgroundColor': '#131d33',
             'color': '#f8fafc',
-            'borderBottom': '1px solid #334155',
+            'borderBottom': '1px solid #1e2d4a',
             'borderLeft': 'none',
             'borderRight': 'none',
-            'fontSize': '0.83rem',
+            'fontSize': '0.825rem',
             'fontFamily': 'Plus Jakarta Sans, sans-serif',
-            'padding': '8px 12px',
+            'padding': '9px 12px',
             'textAlign': 'left'
         },
         style_data_conditional=style_data_conditional
@@ -95,10 +117,22 @@ def create_data_table(df):
         [
             html.Div(
                 [
-                    html.Span("📋 Senarai Penuh Stesen Telemetri", className="card-header-title me-2"),
-                    html.Span(" (Gunakan carian/susunan pada tajuk kolum)", style={"fontSize": "0.75rem", "color": "#94a3b8"})
+                    html.Div(
+                        [
+                            html.I(className="bi bi-table me-2 text-primary"),
+                            html.Span("MATRIKS & REKOD AUDIT TELEMETRI STESEN", className="card-header-title")
+                        ],
+                        className="d-flex align-items-center"
+                    ),
+                    html.Div(
+                        [
+                            html.I(className="bi bi-shield-check text-success me-1"),
+                            html.Span("Integriti Rekod Terpelihara (Gunakan carian/susunan pada tajuk kolum)", style={"fontSize": "0.75rem", "color": "#94a3b8"})
+                        ],
+                        className="d-flex align-items-center"
+                    )
                 ],
-                className="mb-3"
+                className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"
             ),
             table
         ]

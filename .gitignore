@@ -17,5 +17,6 @@ ENV/
 # Logs
 *.log
 
-# Local documentation (Do not push to GitHub)
+# Local documentation & agent files (Do not push to GitHub)
 docs/
+.agents/

@@ -11,22 +11,72 @@ def create_kpi_cards(df):
         alert = len(df[df['water_level_indicator'] == 'ALERT'])
         normal = len(df[df['water_level_indicator'] == 'NORMAL'])
 
+    def calc_pct(val):
+        return f"{(val / total * 100):.1f}%" if total > 0 else "0%"
+
     cards = [
-        ("Jumlah Stesen", str(total), "Stesen Telemetri Aktif", "total", "#3b82f6"),
-        ("Paras Bahaya", str(danger), "DANGER - Tindakan Segera", "danger", "#ef4444"),
-        ("Paras Amaran", str(warning), "WARNING - Bersiap Sedia", "warning", "#f97316"),
-        ("Paras Waspada", str(alert), "ALERT - Kawalan Dipantau", "alert", "#eab308"),
-        ("Paras Normal", str(normal), "NORMAL - Dalam Kawalan", "normal", "#10b981"),
+        (
+            "JUMLAH STESEN", 
+            str(total), 
+            "Stesen Telemetri Aktif", 
+            "total", 
+            "#0284c7", 
+            "bi-broadcast"
+        ),
+        (
+            "PARAS BAHAYA", 
+            str(danger), 
+            f"{calc_pct(danger)} | Evakuasi / Tindakan Segera", 
+            "danger", 
+            "#ef4444", 
+            "bi-exclamation-triangle-fill"
+        ),
+        (
+            "PARAS AMARAN", 
+            str(warning), 
+            f"{calc_pct(warning)} | Bersiap Sedia Operasi", 
+            "warning", 
+            "#f97316", 
+            "bi-exclamation-circle-fill"
+        ),
+        (
+            "PARAS WASPADA", 
+            str(alert), 
+            f"{calc_pct(alert)} | Dipantau Rapi 24/7", 
+            "alert", 
+            "#eab308", 
+            "bi-bell-fill"
+        ),
+        (
+            "PARAS NORMAL", 
+            str(normal), 
+            f"{calc_pct(normal)} | Lingkungan Selamat", 
+            "normal", 
+            "#10b981", 
+            "bi-shield-check"
+        ),
     ]
 
     cols = []
-    for title, val, sub, card_type, color in cards:
+    for title, val, sub, card_type, color, icon_cls in cards:
         col = dbc.Col(
             html.Div(
                 [
-                    html.Div(title, className="metric-lbl"),
-                    html.Div(val, className="metric-val", style={"color": color}),
-                    html.Div(sub, className="metric-sub")
+                    html.Div(
+                        [
+                            html.I(className=f"bi {icon_cls} me-1", style={"color": color}),
+                            html.Span(title)
+                        ],
+                        className="metric-lbl d-flex align-items-center"
+                    ),
+                    html.Div(val, className="metric-val my-1", style={"color": color}),
+                    html.Div(
+                        [
+                            html.I(className="bi bi-activity text-muted me-1", style={"fontSize": "0.7rem"}),
+                            html.Span(sub)
+                        ],
+                        className="metric-sub"
+                    )
                 ],
                 className=f"metric-card {card_type} h-100"
             ),
