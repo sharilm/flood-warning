@@ -16,3 +16,6 @@ ENV/
 
 # Logs
 *.log
+
+# Local documentation (Do not push to GitHub)
+docs/
