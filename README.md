@@ -43,6 +43,10 @@ flood-warning/
 │   └── test_dashboard.py      # Automated Pytest suite with requests_mock
 ├── scripts/
 │   └── local_test.sh          # Local pre-push test script
+├── docs/
+│   ├── SDD.md                 # System Design Document (Architecture & CI/CD)
+│   ├── DEPLOYMENT.md          # Cloud deployment guide
+│   └── RENDER_DEPLOYMENT.md   # Render.com deployment instructions
 ├── render.yaml                # Render 1-click cloud deployment manifest
 ├── Dockerfile                 # Production Docker container setup
 ├── Procfile                   # Gunicorn WSGI configuration
