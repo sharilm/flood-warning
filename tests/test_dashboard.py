@@ -42,7 +42,9 @@ def test_security_headers_middleware():
         assert res.headers.get('Referrer-Policy') == 'strict-origin-when-cross-origin'
         assert 'geolocation=()' in res.headers.get('Permissions-Policy')
 
-def test_fetch_flood_warning_data(requests_mock):
+from unittest.mock import patch, MagicMock
+
+def test_fetch_flood_warning_data():
     mock_data = [{
         'station_id': '101',
         'station_name': 'Test Station',
@@ -55,16 +57,20 @@ def test_fetch_flood_warning_data(requests_mock):
         'water_level_danger_level': '3.0',
         'water_level_indicator': 'WARNING'
     }]
-    requests_mock.get('https://api.data.gov.my/flood-warning/', json=mock_data)
+    
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = mock_data
 
-    df, timestamp, success = fetch_flood_warning_data()
-    assert success is True
-    assert isinstance(df, pd.DataFrame)
-    assert not df.empty
-    assert 'station_id' in df.columns
-    assert 'water_level_indicator' in df.columns
-    assert 'latitude' in df.columns
-    assert 'longitude' in df.columns
+    with patch('requests.get', return_value=mock_response):
+        df, timestamp, success = fetch_flood_warning_data()
+        assert success is True
+        assert isinstance(df, pd.DataFrame)
+        assert not df.empty
+        assert 'station_id' in df.columns
+        assert 'water_level_indicator' in df.columns
+        assert 'latitude' in df.columns
+        assert 'longitude' in df.columns
 
 def test_components_layout_rendering():
     # Mock sample DataFrame
