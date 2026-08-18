@@ -1,0 +1,29 @@
+name: Keep Render App Alive
+
+on:
+  schedule:
+    # Berjalan setiap 14 minit (Render free tier sleep selepas 15 minit tanpa aktiviti)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Membolehkan trigger manual dari GitHub UI
+
+jobs:
+  ping-render:
+    name: 🌐 Ping Render Web Service
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📡 Ping Flood Warning App
+        run: |
+          URL="https://flood-warning-nadma.onrender.com/"
+          echo "Sending keep-alive request to: $URL"
+          
+          # Hantar request dengan timeout 60 saat dan semak status code HTTP
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$URL")
+          echo "HTTP Status Code: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+            echo "✅ Render web app is UP and ACTIVE!"
+          else
+            echo "⚠️ Received response code: $HTTP_STATUS (App may be waking up or experiencing issues)"
+          fi
